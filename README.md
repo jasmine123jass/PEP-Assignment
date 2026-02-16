@@ -149,6 +149,128 @@ class StudentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Age must be greater than 5")
         return value
 ```
+## Assignment 5 - Email
+Open settings.py
+```
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'yourgmail@gmail.com'
+EMAIL_HOST_PASSWORD = 'your_app_password'
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+```
+views.py 
+```
+from django.shortcuts import render, redirect
+from django.core.mail import send_mail
+from .forms import RegistrationForm
+from django.conf import settings
+
+def register(request):
+    if request.method == "POST":
+        form = RegistrationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+
+            # Send welcome email
+            send_mail(
+                subject="Welcome to Our Platform",
+                message="Hello, your registration is successful.",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+
+            return render(request, "success.html")
+
+    else:
+        form = RegistrationForm()
+
+    return render(request, "register.html", {"form": form})
+```
+models.py
+```
+from django.db import models
+
+class RegisteredUser(models.Model):
+    name = models.CharField(max_length=100)
+    email = models.EmailField()
+
+    def __str__(self):
+        return self.name
+```
+forms.py
+```
+from django import forms
+from .models import RegisteredUser
+
+class RegistrationForm(forms.ModelForm):
+    class Meta:
+        model = RegisteredUser
+        fields = ['name', 'email']
+```
+
+##  Assignment 6 - Email to admin
+models.py
+```
+class Contact(models.Model):
+    name = models.CharField(max_length=100)
+    email = models.EmailField()
+    message = models.TextField()
+
+    def __str__(self):
+        return self.name
+```
+admin.py
+```
+from .models import Contact
+
+admin.site.register(Contact)
+```
+forms.py
+```
+from .models import Contact
+
+class ContactForm(forms.ModelForm):
+    class Meta:
+        model = Contact
+        fields = ['name', 'email', 'message']
+```
+views.py
+```
+from django.contrib import messages
+from .forms import ContactForm
+
+def contact_view(request):
+    if request.method == "POST":
+        form = ContactForm(request.POST)
+        if form.is_valid():
+            contact = form.save()
+
+            send_mail(
+                subject="New Contact Query",
+                message=f"""
+Name: {contact.name}
+Email: {contact.email}
+Message: {contact.message}
+                """,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[settings.EMAIL_HOST_USER],  # Admin email
+                fail_silently=False,
+            )
+
+            messages.success(request, "Your message has been sent successfully!")
+            return redirect("contact")
+
+    else:
+        form = ContactForm()
+
+    return render(request, "contact.html", {"form": form})
+```
+
+
+
 
 
 
